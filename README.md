@@ -90,6 +90,16 @@ Options:
                                   (Progress bar is disabled by default if
                                   there is no tty attached)
   --threads-num INTEGER RANGE     Number of cpu threads (default: 1)
+  --delete-if-downloaded          Delete the file after downloading. The photo 
+                                  will be moved to the deleted items in iCloud 
+                                  and can be recovered for up to 30 days. 
+                                  It will immediately free up space on iCloud. 
+                                  (default: false)
+  --download-delete-age           Specify the age of the file before removal in 
+                                  days. Allows for the keeping of recent photos 
+                                  on iCloud. 
+                                  (Only used if --delete-if-downloaded is set) 
+                                  (default: 30)
   --version                       Show the version and exit.
   -h, --help                      Show this message and exit.
 ```
