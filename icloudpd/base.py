@@ -195,11 +195,17 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     default=1,
 )
 @click.option('--delete-if-downloaded',
-              help='Delete the file after downloading',
-              is_flag=False)
+              help="Delete the file after downloading. The photo " 
+              "will be moved to the deleted items in iCloud "
+              "and can be recovered for up to 30 days. "
+              "It will immediately free up space on iCloud. ",
+              is_flag=False
+             )
 @click.option('--download-delete-age',
-              help='Specify the age of the file you want to delete in days.' + \
-                   '(Only used if --delete-if-downloaded is set)',
+              help="Specify the age of the file before removal in "
+              "days. Allows for the keeping of recent photos "
+              "on iCloud. "
+              "(Only used if --delete-if-downloaded is set)",
               type=click.IntRange(0),
               default=30)
 
