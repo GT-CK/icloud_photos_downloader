@@ -10,6 +10,7 @@ import itertools
 import subprocess
 import json
 import click
+from future.moves.urllib.parse import urlencode
 
 from tqdm import tqdm
 from tzlocal import get_localzone
@@ -193,6 +194,15 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     type=click.IntRange(1),
     default=1,
 )
+@click.option('--delete-if-downloaded',
+              help='Delete the file after downloading',
+              is_flag=False)
+@click.option('--download-delete-age',
+              help='Specify the age of the file you want to delete in days.' + \
+                   '(Only used if --delete-if-downloaded is set)',
+              type=click.IntRange(0),
+              default=30)
+
 @click.version_option()
 # pylint: disable-msg=too-many-arguments,too-many-statements
 # pylint: disable-msg=too-many-branches,too-many-locals
@@ -223,7 +233,9 @@ def main(
         log_level,
         no_progress_bar,
         notification_script,
-        threads_num,    # pylint: disable=W0613
+        threads_num,  # pylint: disable=W0613  
+        delete_if_downloaded,
+        download_delete_age, 
 ):
     """Download all iCloud photos to a local directory"""
 
@@ -383,6 +395,8 @@ def main(
                 "Could not convert photo created date to local timezone (%s)" %
                 photo.created, logging.ERROR)
             created_date = photo.created
+            
+        current_date = datetime.datetime.now(datetime.timezone.utc)
 
         try:
             if folder_structure.lower() == "none":
@@ -469,7 +483,8 @@ def main(
                 logger.set_tqdm_description(
                     "%s already exists." % truncate_middle(download_path, 96)
                 )
-
+            if delete_if_downloaded and (current_date - created_date).days >  download_delete_age:
+                move_picture_to_recently_deleted(icloud, photo)
         if not file_exists:
             counter.reset()
             if only_print_filenames:
@@ -570,3 +585,29 @@ def main(
 
     if auto_delete:
         autodelete_photos(icloud, folder_structure, directory)
+
+        
+def move_picture_to_recently_deleted(icloud, photo):
+    url = '{}/records/modify?{}'.format(icloud.photos._service_endpoint, urlencode(icloud.photos.params))
+    headers = {'Content-type': 'text/plain'}
+
+    mr = {'fields': {'isDeleted': {'value': 1}}}
+    mr['recordChangeTag'] = photo._asset_record['recordChangeTag']
+    mr['recordName'] = photo._asset_record['recordName']
+
+    mr['recordType'] = 'CPLAsset'
+    op = dict(
+        operationType='update',
+        record=mr,
+    )
+    operations = []
+    operations.append(op)
+
+    post_data = json.dumps(dict(
+        atomic=True,
+        desiredKeys=['isDeleted'],
+        operations=operations,
+        zoneID={'zoneName': 'PrimarySync'},
+    ))
+
+    icloud.photos.session.post(url, data=post_data, headers=headers).json()
